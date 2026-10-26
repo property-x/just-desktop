@@ -172,7 +172,11 @@ fn App() -> Element {
     let filtered_recipes: Vec<JustRecipe> = dump.filter_recipes(&filter_input());
     let active_recipe = dump.resolve_recipe(&selected_recipe());
     let first_recipe_name = dump.first_recipe_display();
-    let justfile_title = dump.display_title();
+    let justfile_title = if profiles.is_empty() {
+        "No Justfile Loaded".to_string()
+    } else {
+        dump.display_title()
+    };
     let brand_icon_uri = use_hook(app_icon_data_uri);
     let active_drag_side = drag_state().map(|(side, _, _)| side);
 
@@ -343,7 +347,9 @@ fn App() -> Element {
                     class: "main-header",
                     div {
                         p { class: "main-title", "{justfile_title}" }
-                        p { class: "brand-subtitle", "Source: {dump.source}" }
+                        if !dump.source.is_empty() {
+                            p { class: "brand-subtitle", "Source: {dump.source}" }
+                        }
                     }
                     div {
                         class: "header-actions",
@@ -353,13 +359,21 @@ fn App() -> Element {
                             "{dump.recipes.len()} Recipes Loaded"
                         }
                         button {
+                            title: if profiles.is_empty() {
+                                "Open a justfile via file dialog"
+                            } else {
+                                "Reload the loaded justfiles"
+                            },
                             class: "send-btn",
                             onclick: move |_| {
                                 let current_list = justfiles();
                                 if current_list.is_empty() {
-                                    let (reloaded, msg) = load_initial_justfiles();
-                                    justfiles.set(reloaded);
-                                    logs.write().push(msg);
+                                    if let Some((profile, msg)) = pick_and_load_justfile() {
+                                        selected_recipe.set(profile.dump.default_recipe_name());
+                                        justfiles.set(vec![profile]);
+                                        active_justfile_idx.set(0);
+                                        logs.write().push(msg);
+                                    }
                                 } else {
                                     let mut updated = Vec::with_capacity(current_list.len());
                                     let mut active_msg = String::new();
@@ -374,7 +388,7 @@ fn App() -> Element {
                                     logs.write().push(active_msg);
                                 }
                             },
-                            "Reload Justfile"
+                            if profiles.is_empty() { "Open Justfile" } else { "Reload Justfile" }
                         }
                     }
                 }
@@ -446,6 +460,12 @@ fn App() -> Element {
                         }
                         div {
                             class: "recipe-grid",
+                            if profiles.is_empty() {
+                                p {
+                                    class: "cmd-desc",
+                                    "No justfile loaded. Use + Add Justfile to open one."
+                                }
+                            }
                             for recipe in filtered_recipes {
                                 {
                                     let r_name = recipe.name.clone();

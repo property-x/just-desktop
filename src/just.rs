@@ -11,7 +11,6 @@ use std::thread;
 
 const FALLBACK_JUST_DUMP_JSON: &str = r#"{"assignments":{},"first":"default","doc":null,"groups":[],"module_path":"","modules":{},"aliases":{},"recipes":{"build":{"attributes":[],"body":[["cargo build --release"]],"dependencies":[],"doc":"Recipe to build the project","name":"build","parameters":[],"priors":0,"private":false,"quiet":false,"namepath":"build","shebang":false},"default":{"attributes":[],"body":[["@build"]],"dependencies":[],"doc":"Default target","name":"default","parameters":[],"priors":0,"private":false,"quiet":false,"namepath":"default","shebang":false},"deps":{"attributes":[],"body":[["cargo build"]],"dependencies":[],"doc":"Helper recipe to ensure dependencies are installed","name":"deps","parameters":[],"priors":0,"private":false,"quiet":false,"namepath":"deps","shebang":false},"echo":{"attributes":[],"body":[["echo ",[["variable","TEST"]]]],"dependencies":[],"doc":null,"name":"echo","parameters":[{"default":null,"export":false,"flag":false,"help":null,"kind":"singular","long":null,"max":null,"min":null,"multiple":false,"name":"TEST","pattern":null,"short":null,"value":null}],"priors":0,"private":false,"quiet":false,"namepath":"echo","shebang":false},"serve":{"attributes":[],"body":[["dx serve"]],"dependencies":[],"doc":"Recipe to run the development server (assuming 'dx serve' is a wrapper around running the built binary)","name":"serve","parameters":[],"priors":0,"private":false,"quiet":false,"namepath":"serve","shebang":false}},"settings":{"allow_duplicate_recipes":false,"allow_duplicate_variables":false,"default_list":false,"default_script":false,"dotenv_command":[],"dotenv_filename":null,"dotenv_load":false,"dotenv_override":false,"dotenv_path":null,"dotenv_required":false,"export":false,"fallback":false,"guards":false,"ignore_comments":false,"indentation":null,"lazy":false,"lists":false,"no_cd":false,"no_exit_message":false,"positional_arguments":false,"quiet":false,"shell":null,"tempdir":null,"unstable":false,"windows_powershell":false,"windows_shell":null,"working_directory":null},"source":"/var/home/zink/projects/cuvk/justfile","unexports":[],"warnings":[]}"#;
 
-const SECONDARY_JUST_DUMP_JSON: &str = r#"{"assignments":{},"first":"check","doc":"CI & Verification Justfile","groups":[],"module_path":"","modules":{},"aliases":{},"recipes":{"check":{"attributes":[],"body":[["cargo check --all-targets"]],"dependencies":[],"doc":"Run fast compiler type-checking","name":"check","parameters":[],"priors":0,"private":false,"quiet":false,"namepath":"check","shebang":false},"clippy":{"attributes":[],"body":[["cargo clippy -- -D warnings"]],"dependencies":[],"doc":"Run lints across workspace crates","name":"clippy","parameters":[],"priors":0,"private":false,"quiet":false,"namepath":"clippy","shebang":false},"test":{"attributes":[],"body":[["cargo test"]],"dependencies":["check"],"doc":"Execute unit and integration tests","name":"test","parameters":[],"priors":1,"private":false,"quiet":false,"namepath":"test","shebang":false}},"settings":{"allow_duplicate_recipes":false,"allow_duplicate_variables":false,"default_list":false,"default_script":false,"dotenv_command":[],"dotenv_filename":null,"dotenv_load":true,"dotenv_override":false,"dotenv_path":null,"dotenv_required":false,"export":true,"fallback":false,"guards":false,"ignore_comments":false,"indentation":null,"lazy":false,"lists":false,"no_cd":false,"no_exit_message":false,"positional_arguments":true,"quiet":false,"shell":null,"tempdir":null,"unstable":false,"windows_powershell":false,"windows_shell":null,"working_directory":null},"source":"/var/home/zink/projects/cuvk/ci.justfile","unexports":[],"warnings":[]}"#;
 
 #[derive(Clone, Debug, Default, Deserialize, PartialEq)]
 #[allow(dead_code)]
@@ -586,35 +585,10 @@ pub fn load_initial_justfiles() -> (Vec<JustfileProfile>, String) {
         return (profiles, first_msg);
     }
 
-    let (primary_dump, log_msg) = load_just_dump_for_path(
-        Some("/var/home/zink/projects/cuvk/justfile"),
-        FALLBACK_JUST_DUMP_JSON,
-    );
-    let primary_path = if primary_dump.source.is_empty() {
-        "/var/home/zink/projects/cuvk/justfile".to_string()
-    } else {
-        primary_dump.source.clone()
-    };
-
-    let (secondary_dump, _) = load_just_dump_for_path(
-        Some("/var/home/zink/projects/cuvk/ci.justfile"),
-        SECONDARY_JUST_DUMP_JSON,
-    );
-
-    let profiles = vec![
-        JustfileProfile {
-            label: "cuvk / justfile".to_string(),
-            path: primary_path,
-            dump: primary_dump,
-        },
-        JustfileProfile {
-            label: "cuvk / ci.justfile".to_string(),
-            path: secondary_dump.source.clone(),
-            dump: secondary_dump,
-        },
-    ];
-
-    (profiles, log_msg)
+    (
+        Vec::new(),
+        "[ready] No justfiles loaded. Add a justfile to get started.".to_string(),
+    )
 }
 
 pub fn load_custom_justfile(justfile_path: &str) -> (JustfileProfile, String) {
