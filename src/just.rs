@@ -296,6 +296,7 @@ pub enum RecipeRunStatus {
     Idle,
     Running,
     Done,
+    Failed,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -366,7 +367,7 @@ pub fn run_just_recipe(
     recipe_name: &str,
     args: &[String],
     abort_handle: &RecipeAbortHandle,
-) -> (String, String) {
+) -> (String, String, RecipeRunStatus) {
     let working_dir = Path::new(justfile_path)
         .parent()
         .filter(|p| !p.as_os_str().is_empty())
@@ -405,7 +406,7 @@ pub fn run_just_recipe(
         Err(err) => {
             let msg = format!("[exec] `{dir_display}$ just {recipe_name}{args_display}` ({err})");
             let full_log = format!("{dir_display}$ just {recipe_name}{args_display}\nError: {err}");
-            return (msg, full_log);
+            return (msg, full_log, RecipeRunStatus::Failed);
         }
     };
 
@@ -425,7 +426,7 @@ pub fn run_just_recipe(
                 if !stderr.is_empty() {
                     full_log.push_str(&format!("\n\n--- stderr ---\n{stderr}"));
                 }
-                return (summary, full_log);
+                return (summary, full_log, RecipeRunStatus::Idle);
             }
 
             let status_code = output.status.code().unwrap_or(-1);
@@ -453,12 +454,18 @@ pub fn run_just_recipe(
                 full_log.push_str("\n(no output)");
             }
 
-            (summary, full_log)
+            let run_status = if output.status.success() {
+                RecipeRunStatus::Done
+            } else {
+                RecipeRunStatus::Failed
+            };
+
+            (summary, full_log, run_status)
         }
         Err(err) => {
             let msg = format!("[exec] `{dir_display}$ just {recipe_name}{args_display}` ({err})");
             let full_log = format!("{dir_display}$ just {recipe_name}{args_display}\nError: {err}");
-            (msg, full_log)
+            (msg, full_log, RecipeRunStatus::Failed)
         }
     }
 }
@@ -468,7 +475,7 @@ pub async fn run_just_recipe_async(
     recipe_name: String,
     args: Vec<String>,
     abort_handle: RecipeAbortHandle,
-) -> (String, String) {
+) -> (String, String, RecipeRunStatus) {
     struct BlockingTask<T> {
         state: Arc<Mutex<(Option<T>, Option<Waker>)>>,
     }

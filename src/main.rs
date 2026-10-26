@@ -102,7 +102,7 @@ fn schedule_recipe_run(
         run_name, args_suffix
     ));
     spawn(async move {
-        let (summary_line, full_log) =
+        let (summary_line, full_log, final_status) =
             run_just_recipe_async(justfile_src, run_name, run_args, abort_handle.clone()).await;
         {
             let mut states = run_states.write();
@@ -112,11 +112,6 @@ fn schedule_recipe_run(
                 .is_some_and(|h| h == &abort_handle);
             if is_same_run {
                 let prev_expanded = states.get(&key).map(|s| s.log_expanded).unwrap_or(false);
-                let final_status = if abort_handle.is_aborted() {
-                    RecipeRunStatus::Idle
-                } else {
-                    RecipeRunStatus::Done
-                };
                 states.insert(
                     key,
                     RecipeExecutionState {
@@ -470,6 +465,7 @@ fn App() -> Element {
                                         .as_ref()
                                         .map(|s| s.output.clone())
                                         .unwrap_or_else(|| "Not executed yet.".to_string());
+                                    let log_output_id = format!("recipe-log-content-{r_name}");
                                     let is_selected = selected_recipe() == r_name;
                                     let is_first = dump.first.as_deref() == Some(r_name.as_str());
                                     let resolved_args = recipe.resolve_args(&justfile_src, &param_values());
@@ -480,11 +476,13 @@ fn App() -> Element {
                                     let btn_class = match status {
                                         Some(RecipeRunStatus::Running) => "run-cmd-btn running",
                                         Some(RecipeRunStatus::Done) => "run-cmd-btn done",
+                                        Some(RecipeRunStatus::Failed) => "run-cmd-btn failed",
                                         Some(RecipeRunStatus::Idle) | None => "run-cmd-btn",
                                     };
                                     let btn_label = match status {
                                         Some(RecipeRunStatus::Running) => "⏳ Running...",
                                         Some(RecipeRunStatus::Done) => "✓ Done",
+                                        Some(RecipeRunStatus::Failed) => "✕ Failed",
                                         Some(RecipeRunStatus::Idle) | None => "▶ Run",
                                     };
                                     rsx! {
@@ -579,7 +577,26 @@ fn App() -> Element {
                                                     div {
                                                         class: "recipe-log-output",
                                                         div {
+                                                            id: "{log_output_id}",
                                                             class: "recipe-log-content",
+                                                            onmounted: move |_| {
+                                                                let element_id = serde_json::to_string(&log_output_id)
+                                                                    .unwrap_or_else(|_| "\"\"".to_string());
+                                                                let script = format!(
+                                                                    r#"
+                                                                    const element = document.getElementById({element_id});
+                                                                    if (element) {{
+                                                                        const scrollToEnd = () => {{
+                                                                            element.scrollTop = element.scrollHeight;
+                                                                        }};
+                                                                        scrollToEnd();
+                                                                        const observer = new MutationObserver(scrollToEnd);
+                                                                        observer.observe(element, {{ childList: true, subtree: true, characterData: true }});
+                                                                    }}
+                                                                    "#
+                                                                );
+                                                                let _ = document::eval(&script);
+                                                            },
                                                             "{log_output}"
                                                         }
                                                         button {
