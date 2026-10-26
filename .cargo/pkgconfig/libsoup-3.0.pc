@@ -1,0 +1,9 @@
+prefix=/usr
+libdir=/home/zink/projects/cuvk/.cargo/lib
+libdir_flatpak=/home/zink/projects/cuvk/.cargo/lib-flatpak
+targets=x11 wayland
+
+Name: libsoup-3.0
+Description: libsoup-3.0
+Version: 3.7.4
+Libs: -L${libdir} -L${libdir_flatpak} -lsoup-3.0

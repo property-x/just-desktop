@@ -1,0 +1,9 @@
+prefix=/usr
+libdir=/home/zink/projects/cuvk/.cargo/lib
+libdir_flatpak=/home/zink/projects/cuvk/.cargo/lib-flatpak
+targets=x11 wayland
+
+Name: cairo
+Description: cairo
+Version: 1.18.6
+Libs: -L${libdir} -L${libdir_flatpak} -lcairo

@@ -1,0 +1,8 @@
+[env]
+PKG_CONFIG_PATH = { value = ".cargo/pkgconfig", relative = true }
+
+[build]
+rustflags = [
+    "-L", "native=/home/zink/projects/cuvk/.cargo/lib",
+    "-L", "native=/home/zink/projects/cuvk/.cargo/lib-flatpak",
+]

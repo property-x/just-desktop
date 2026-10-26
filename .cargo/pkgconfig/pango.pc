@@ -1,0 +1,9 @@
+prefix=/usr
+libdir=/home/zink/projects/cuvk/.cargo/lib
+libdir_flatpak=/home/zink/projects/cuvk/.cargo/lib-flatpak
+targets=x11 wayland
+
+Name: pango
+Description: pango
+Version: 1.57.0
+Libs: -L${libdir} -L${libdir_flatpak} -lpango-1.0

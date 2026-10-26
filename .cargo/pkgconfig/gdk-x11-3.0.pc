@@ -1,0 +1,9 @@
+prefix=/usr
+libdir=/home/zink/projects/cuvk/.cargo/lib
+libdir_flatpak=/home/zink/projects/cuvk/.cargo/lib-flatpak
+targets=x11 wayland
+
+Name: gdk-x11-3.0
+Description: gdk-x11-3.0
+Version: 3.24.20
+Libs: -L${libdir} -L${libdir_flatpak} -lgdk-3

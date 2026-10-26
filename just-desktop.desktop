@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Just Desktop
+Comment=Just Desktop Recipe Runner
+Exec=/home/zink/projects/cuvk/target/release/just_desktop %F
+Icon=/home/zink/projects/cuvk/assets/blueprint-j.png
+Terminal=false
+Categories=Utility;Development;
+MimeType=text/plain;

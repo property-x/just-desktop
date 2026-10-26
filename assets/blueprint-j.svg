@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <defs>
+    <!-- 4px Blueprint Grid Pattern -->
+    <pattern id="bp-grid-32" width="4" height="4" patternUnits="userSpaceOnUse">
+      <path d="M 4 0 L 0 0 0 4" fill="none" stroke="#2563eb" stroke-width="0.5" stroke-opacity="0.55" />
+    </pattern>
+  </defs>
+
+  <!-- Blueprint Background -->
+  <rect width="32" height="32" fill="#0f2b48" />
+  <rect width="32" height="32" fill="url(#bp-grid-32)" />
+
+  <!-- Construction / Reference Lines (Anti-aliased) -->
+  <g stroke="#38bdf8" stroke-width="1" stroke-dasharray="2,2" fill="none" opacity="0.8">
+    <!-- Top Bar Alignment Extension -->
+    <line x1="8" y1="6" x2="27" y2="6" />
+    <!-- Stem Alignment Line -->
+    <line x1="21" y1="5" x2="21" y2="21" />
+    <!-- Arc Reference Centerlines -->
+    <line x1="10" y1="20" x2="20" y2="20" stroke-dasharray="3,1" />
+    <line x1="15" y1="16" x2="15" y2="25" stroke-dasharray="3,1" />
+  </g>
+
+  <!-- Arc Center Pivot Dot -->
+  <circle cx="15" cy="20" r="1" fill="#38bdf8" />
+
+  <!-- Dimension Indicator Line & Ticks (Right Side) -->
+  <g stroke="#7dd3fc" stroke-width="1">
+    <line x1="26" y1="6" x2="26" y2="26" />
+    <line x1="24.5" y1="6" x2="27.5" y2="6" />
+    <line x1="24.5" y1="26" x2="27.5" y2="26" />
+  </g>
+
+  <!-- Main Blueprint Geometry: Letter 'J' -->
+  <!-- Crisp, solid contour with a subtle blueprint glow/tint fill -->
+  <path d="M 12 6
+       H 23
+       V 9.5
+       H 21
+       V 19.5
+       A 6 6 0 0 1 9 19.5
+       V 16
+       H 13
+       V 19.5
+       A 2 2 0 0 0 17 19.5
+       V 9.5
+       H 12
+       Z" fill="rgba(56, 189, 248, 0.2)" stroke="#ffffff" stroke-width="1.75" stroke-linejoin="round" stroke-linecap="round" />
+
+  <!-- Subtle Corner Registration Marks -->
+  <g stroke="#38bdf8" stroke-width="1" fill="none" opacity="0.65">
+    <path d="M 2 4 H 4 M 2 4 V 2" />
+    <path d="M 30 4 H 28 M 30 4 V 2" />
+    <path d="M 2 28 H 4 M 2 28 V 30" />
+    <path d="M 30 28 H 28 M 30 28 V 30" />
+  </g>
+</svg>

@@ -1,0 +1,9 @@
+prefix=/usr
+libdir=/home/zink/projects/cuvk/.cargo/lib
+libdir_flatpak=/home/zink/projects/cuvk/.cargo/lib-flatpak
+targets=x11 wayland
+
+Name: gio-2.0
+Description: gio-2.0
+Version: 2.88.4
+Libs: -L${libdir} -L${libdir_flatpak} -lgio-2.0
