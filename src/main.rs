@@ -577,8 +577,28 @@ fn App() -> Element {
                                                 }
                                                 if log_expanded {
                                                     div {
-                                                        class: "recipe-log-content",
-                                                        "{log_output}"
+                                                        class: "recipe-log-output",
+                                                        div {
+                                                            class: "recipe-log-content",
+                                                            "{log_output}"
+                                                        }
+                                                        button {
+                                                            class: "copy-log-btn",
+                                                            title: "Copy execution log",
+                                                            onclick: move |evt| {
+                                                                evt.stop_propagation();
+                                                                let output = log_output.clone();
+                                                                async move {
+                                                                    let output = serde_json::to_string(&output)
+                                                                        .unwrap_or_else(|_| "\"\"".to_string());
+                                                                    let script = format!(
+                                                                        "try {{ await navigator.clipboard.writeText({output}); return true; }} catch {{ return false; }}"
+                                                                    );
+                                                                    let _ = document::eval(&script).await;
+                                                                }
+                                                            },
+                                                            "Copy"
+                                                        }
                                                     }
                                                 }
                                             }
