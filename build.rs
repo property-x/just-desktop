@@ -1,7 +1,13 @@
-use std::env;
-use std::path::PathBuf;
-
 fn main() {
+    #[cfg(target_os = "linux")]
+    linux();
+}
+
+// this is just here so we can build and run from within vscode as a flatpak
+#[cfg(target_os = "linux")]
+fn flatpak_patch() {
+    use std::env;
+    use std::path::PathBuf;
     let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
     let lib_dir = manifest_dir.join(".cargo/lib");
     let lib_flatpak_dir = manifest_dir.join(".cargo/lib-flatpak");
