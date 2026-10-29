@@ -1,4 +1,4 @@
-# Just-Deskto
+# Just-Desktop
 
 A tool to run justfiles from a UI
 
