@@ -1,6 +1,6 @@
 prefix=/usr
-libdir=/home/zink/projects/cuvk/.cargo/lib
-libdir_flatpak=/home/zink/projects/cuvk/.cargo/lib-flatpak
+libdir=${pcfiledir}/../lib
+libdir_flatpak=${pcfiledir}/../lib-flatpak
 targets=x11 wayland
 
 Name: gdk-pixbuf-2.0

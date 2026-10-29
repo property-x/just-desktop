@@ -1,0 +1,9 @@
+prefix=/usr
+libdir=${pcfiledir}/../lib
+libdir_flatpak=${pcfiledir}/../lib-flatpak
+targets=wayland
+
+Name: wayland-client
+Description: wayland-client
+Version: 1.24.0
+Libs: -L${libdir} -L${libdir_flatpak} -lwayland-client

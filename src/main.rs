@@ -127,6 +127,28 @@ fn schedule_recipe_run(
     });
 }
 
+#[component]
+fn Collapsible(title: String, children: Element) -> Element {
+    let mut expanded = use_signal(|| false);
+    rsx! {
+        div {
+            class: "collapsible-section",
+            button {
+                class: "collapsible-header",
+                onclick: move |_| expanded.set(!expanded()),
+                span { if expanded() { "▾ {title}" } else { "▸ {title}" } }
+                span {
+                    class: "cmd-tag",
+                    if expanded() { "Hide" } else { "Show" }
+                }
+            }
+            if expanded() {
+                {children}
+            }
+        }
+    }
+}
+
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum ResizeSide {
     Left,
@@ -145,10 +167,6 @@ fn App() -> Element {
     let mut justfiles = use_signal(move || initial.0.clone());
     let mut active_justfile_idx = use_signal(|| 0usize);
     let mut selected_recipe = use_signal(move || initial_first);
-    let mut summary_expanded = use_signal(|| false);
-    let mut cmd_params_expanded = use_signal(|| false);
-    let mut settings_expanded = use_signal(|| false);
-    let mut activity_logs_expanded = use_signal(|| false);
     let mut left_width = use_signal(|| 280.0_f64);
     let mut right_width = use_signal(|| 330.0_f64);
     let mut drag_state = use_signal(|| None::<(ResizeSide, f64, f64)>);
@@ -297,6 +315,8 @@ fn App() -> Element {
                                                             0
                                                         } else if current_idx >= remaining {
                                                             remaining - 1
+                                                        } else if idx < current_idx {
+                                                            current_idx - 1
                                                         } else {
                                                             current_idx
                                                         };
@@ -397,41 +417,24 @@ fn App() -> Element {
                     class: "center-viewport",
 
                     // Collapsible Summary Metrics from Top-Level Dump Info (collapsed by default)
-                    div {
-                        class: "collapsible-section",
-                        button {
-                            class: "collapsible-header",
-                            onclick: move |_| summary_expanded.set(!summary_expanded()),
-                            span {
-                                if summary_expanded() {
-                                    "▾ Justfile Summary"
-                                } else {
-                                    "▸ Justfile Summary"
-                                }
-                            }
-                            span {
-                                class: "cmd-tag",
-                                if summary_expanded() { "Hide" } else { "Show" }
-                            }
-                        }
-                        if summary_expanded() {
+                    Collapsible {
+                        title: "Justfile Summary",
+                        div {
+                            class: "summary-strip",
                             div {
-                                class: "summary-strip",
-                                div {
-                                    class: "metric-box",
-                                    span { class: "metric-label", "First / Entry Recipe" }
-                                    span { class: "metric-value", "{first_recipe_name}" }
-                                }
-                                div {
-                                    class: "metric-box",
-                                    span { class: "metric-label", "Total Recipes" }
-                                    span { class: "metric-value", "{dump.recipes.len()}" }
-                                }
-                                div {
-                                    class: "metric-box",
-                                    span { class: "metric-label", "Justfile Source" }
-                                    span { class: "metric-value", "{dump.source}" }
-                                }
+                                class: "metric-box",
+                                span { class: "metric-label", "First / Entry Recipe" }
+                                span { class: "metric-value", "{first_recipe_name}" }
+                            }
+                            div {
+                                class: "metric-box",
+                                span { class: "metric-label", "Total Recipes" }
+                                span { class: "metric-value", "{dump.recipes.len()}" }
+                            }
+                            div {
+                                class: "metric-box",
+                                span { class: "metric-label", "Justfile Source" }
+                                span { class: "metric-value", "{dump.source}" }
                             }
                         }
                     }
@@ -758,138 +761,87 @@ fn App() -> Element {
                     }
 
                     // Collapsible Selected Command Parameters (collapsed by default)
-                    div {
-                        class: "collapsible-section",
-                        button {
-                            class: "collapsible-header",
-                            onclick: move |_| cmd_params_expanded.set(!cmd_params_expanded()),
-                            span {
-                                if cmd_params_expanded() {
-                                    "▾ Selected Command Parameters"
-                                } else {
-                                    "▸ Selected Command Parameters"
-                                }
-                            }
-                            span {
-                                class: "cmd-tag",
-                                if cmd_params_expanded() { "Hide" } else { "Show" }
-                            }
-                        }
-                        if cmd_params_expanded() {
+                    Collapsible {
+                        title: "Selected Command Parameters",
+                        div {
+                            class: "collapsible-card-body",
                             div {
-                                class: "collapsible-card-body",
-                                div {
-                                    class: "param-row",
-                                    span { class: "param-key", "Namepath" }
-                                    span { class: "param-val", "{recipe.namepath}" }
-                                }
-                                div {
-                                    class: "param-row",
-                                    span { class: "param-key", "Parameters" }
-                                    span { class: "param-val", "{recipe.parameters.len()}" }
-                                }
-                                div {
-                                    class: "param-row",
-                                    span { class: "param-key", "Dependencies" }
-                                    span { class: "param-val", "{recipe.dependencies.len()}" }
-                                }
-                                div {
-                                    class: "param-row",
-                                    span { class: "param-key", "Priors" }
-                                    span { class: "param-val", "{recipe.priors}" }
-                                }
-                                div {
-                                    class: "param-row",
-                                    span { class: "param-key", "Private / Quiet" }
-                                    span { class: "param-val", "{recipe.private} / {recipe.quiet}" }
-                                }
-                                div {
-                                    class: "param-row",
-                                    span { class: "param-key", "Shebang" }
-                                    span { class: "param-val", "{recipe.shebang}" }
-                                }
+                                class: "param-row",
+                                span { class: "param-key", "Namepath" }
+                                span { class: "param-val", "{recipe.namepath}" }
+                            }
+                            div {
+                                class: "param-row",
+                                span { class: "param-key", "Parameters" }
+                                span { class: "param-val", "{recipe.parameters.len()}" }
+                            }
+                            div {
+                                class: "param-row",
+                                span { class: "param-key", "Dependencies" }
+                                span { class: "param-val", "{recipe.dependencies.len()}" }
+                            }
+                            div {
+                                class: "param-row",
+                                span { class: "param-key", "Priors" }
+                                span { class: "param-val", "{recipe.priors}" }
+                            }
+                            div {
+                                class: "param-row",
+                                span { class: "param-key", "Private / Quiet" }
+                                span { class: "param-val", "{recipe.private} / {recipe.quiet}" }
+                            }
+                            div {
+                                class: "param-row",
+                                span { class: "param-key", "Shebang" }
+                                span { class: "param-val", "{recipe.shebang}" }
                             }
                         }
                     }
                 }
 
                 // Collapsible Justfile Settings (collapsed by default)
-                div {
-                    class: "collapsible-section",
-                    button {
-                        class: "collapsible-header",
-                        onclick: move |_| settings_expanded.set(!settings_expanded()),
-                        span {
-                            if settings_expanded() {
-                                "▾ Justfile Settings"
-                            } else {
-                                "▸ Justfile Settings"
-                            }
-                        }
-                        span {
-                            class: "cmd-tag",
-                            if settings_expanded() { "Hide" } else { "Show" }
-                        }
-                    }
-                    if settings_expanded() {
+                Collapsible {
+                    title: "Justfile Settings",
+                    div {
+                        class: "collapsible-card-body",
                         div {
-                            class: "collapsible-card-body",
-                            div {
-                                class: "param-row",
-                                span { class: "param-key", "dotenv_load" }
-                                span { class: "param-val", "{dump.settings.dotenv_load}" }
-                            }
-                            div {
-                                class: "param-row",
-                                span { class: "param-key", "export" }
-                                span { class: "param-val", "{dump.settings.export}" }
-                            }
-                            div {
-                                class: "param-row",
-                                span { class: "param-key", "positional_arguments" }
-                                span { class: "param-val", "{dump.settings.positional_arguments}" }
-                            }
-                            div {
-                                class: "param-row",
-                                span { class: "param-key", "quiet" }
-                                span { class: "param-val", "{dump.settings.quiet}" }
-                            }
-                            div {
-                                class: "param-row",
-                                span { class: "param-key", "Warnings" }
-                                span { class: "param-val", "{dump.warnings.len()}" }
-                            }
+                            class: "param-row",
+                            span { class: "param-key", "dotenv_load" }
+                            span { class: "param-val", "{dump.settings.dotenv_load}" }
+                        }
+                        div {
+                            class: "param-row",
+                            span { class: "param-key", "export" }
+                            span { class: "param-val", "{dump.settings.export}" }
+                        }
+                        div {
+                            class: "param-row",
+                            span { class: "param-key", "positional_arguments" }
+                            span { class: "param-val", "{dump.settings.positional_arguments}" }
+                        }
+                        div {
+                            class: "param-row",
+                            span { class: "param-key", "quiet" }
+                            span { class: "param-val", "{dump.settings.quiet}" }
+                        }
+                        div {
+                            class: "param-row",
+                            span { class: "param-key", "Warnings" }
+                            span { class: "param-val", "{dump.warnings.len()}" }
                         }
                     }
                 }
 
                 // Collapsible Activity Logs (collapsed by default)
-                div {
-                    class: "collapsible-section",
-                    button {
-                        class: "collapsible-header",
-                        onclick: move |_| activity_logs_expanded.set(!activity_logs_expanded()),
-                        span {
-                            if activity_logs_expanded() {
-                                "▾ Activity Logs"
-                            } else {
-                                "▸ Activity Logs"
-                            }
-                        }
-                        span {
-                            class: "cmd-tag",
-                            if activity_logs_expanded() { "Hide" } else { "Show" }
-                        }
-                    }
-                    if activity_logs_expanded() {
-                        div {
-                            class: "collapsible-card-body",
-                            for (idx, entry) in logs().into_iter().enumerate() {
-                                div {
-                                    key: "{idx}",
-                                    class: "log-entry",
-                                    "{entry}"
-                                }
+                Collapsible {
+                    title: "Activity Logs",
+                    div {
+                        class: "collapsible-card-body",
+                        for (idx, entry) in logs().into_iter().enumerate() {
+                            div {
+                                key: "{idx}",
+                                class: "log-entry",
+                                "{entry}"
                             }
                         }
                     }

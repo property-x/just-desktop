@@ -9,18 +9,10 @@ use std::sync::{Arc, Mutex};
 use std::task::{Context, Poll, Waker};
 use std::thread;
 
-const FALLBACK_JUST_DUMP_JSON: &str = r#"{"assignments":{},"first":"default","doc":null,"groups":[],"module_path":"","modules":{},"aliases":{},"recipes":{"build":{"attributes":[],"body":[["cargo build --release"]],"dependencies":[],"doc":"Recipe to build the project","name":"build","parameters":[],"priors":0,"private":false,"quiet":false,"namepath":"build","shebang":false},"default":{"attributes":[],"body":[["@build"]],"dependencies":[],"doc":"Default target","name":"default","parameters":[],"priors":0,"private":false,"quiet":false,"namepath":"default","shebang":false},"deps":{"attributes":[],"body":[["cargo build"]],"dependencies":[],"doc":"Helper recipe to ensure dependencies are installed","name":"deps","parameters":[],"priors":0,"private":false,"quiet":false,"namepath":"deps","shebang":false},"echo":{"attributes":[],"body":[["echo ",[["variable","TEST"]]]],"dependencies":[],"doc":null,"name":"echo","parameters":[{"default":null,"export":false,"flag":false,"help":null,"kind":"singular","long":null,"max":null,"min":null,"multiple":false,"name":"TEST","pattern":null,"short":null,"value":null}],"priors":0,"private":false,"quiet":false,"namepath":"echo","shebang":false},"serve":{"attributes":[],"body":[["dx serve"]],"dependencies":[],"doc":"Recipe to run the development server (assuming 'dx serve' is a wrapper around running the built binary)","name":"serve","parameters":[],"priors":0,"private":false,"quiet":false,"namepath":"serve","shebang":false}},"settings":{"allow_duplicate_recipes":false,"allow_duplicate_variables":false,"default_list":false,"default_script":false,"dotenv_command":[],"dotenv_filename":null,"dotenv_load":false,"dotenv_override":false,"dotenv_path":null,"dotenv_required":false,"export":false,"fallback":false,"guards":false,"ignore_comments":false,"indentation":null,"lazy":false,"lists":false,"no_cd":false,"no_exit_message":false,"positional_arguments":false,"quiet":false,"shell":null,"tempdir":null,"unstable":false,"windows_powershell":false,"windows_shell":null,"working_directory":null},"source":"/var/home/zink/projects/cuvk/justfile","unexports":[],"warnings":[]}"#;
-
-
 #[derive(Clone, Debug, Default, Deserialize, PartialEq)]
-#[allow(dead_code)]
 pub struct JustDump {
     #[serde(default)]
     pub first: Option<String>,
-    #[serde(default)]
-    pub doc: Option<String>,
-    #[serde(default)]
-    pub module_path: String,
     #[serde(default)]
     pub recipes: BTreeMap<String, JustRecipe>,
     #[serde(default)]
@@ -176,8 +168,10 @@ impl JustRecipe {
                 self.name.clone(),
                 param.name.clone(),
             );
+            // An emptied field falls back to the default; skipping it would shift later positional args.
             let raw = overrides
                 .get(&key)
+                .filter(|v| !v.is_empty())
                 .cloned()
                 .unwrap_or_else(|| param.default_string());
             if param.kind == "star" || param.kind == "plus" {
@@ -193,26 +187,15 @@ impl JustRecipe {
 }
 
 #[derive(Clone, Debug, Default, Deserialize, PartialEq)]
-#[allow(dead_code)]
 pub struct JustSettings {
-    #[serde(default)]
-    pub allow_duplicate_recipes: bool,
-    #[serde(default)]
-    pub allow_duplicate_variables: bool,
     #[serde(default)]
     pub dotenv_load: bool,
     #[serde(default)]
     pub export: bool,
     #[serde(default)]
-    pub fallback: bool,
-    #[serde(default)]
-    pub ignore_comments: bool,
-    #[serde(default)]
     pub positional_arguments: bool,
     #[serde(default)]
     pub quiet: bool,
-    #[serde(default)]
-    pub unstable: bool,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -227,8 +210,6 @@ fn just_command() -> Command {
     if let Some(home) = std::env::var_os("HOME") {
         candidates.push(PathBuf::from(home).join(".cargo/bin/just"));
     }
-    candidates.push(PathBuf::from("/home/zink/.cargo/bin/just"));
-    candidates.push(PathBuf::from("/var/home/zink/.cargo/bin/just"));
     candidates.push(PathBuf::from("/usr/local/bin/just"));
     candidates.push(PathBuf::from("/usr/bin/just"));
 
@@ -249,44 +230,42 @@ fn just_command() -> Command {
     cmd
 }
 
-pub fn load_just_dump_for_path(
-    justfile_path: Option<&str>,
-    fallback_json: &str,
-) -> (JustDump, String) {
+pub fn load_just_dump_for_path(justfile_path: &str) -> (JustDump, String) {
     let mut cmd = just_command();
-    if let Some(path) = justfile_path {
-        cmd.args(["--justfile", path]);
-        if let Some(parent) = Path::new(path)
-            .parent()
-            .filter(|p| !p.as_os_str().is_empty())
-        {
-            cmd.arg("--working-directory").arg(parent);
-        }
+    cmd.args(["--justfile", justfile_path]);
+    if let Some(parent) = Path::new(justfile_path)
+        .parent()
+        .filter(|p| !p.as_os_str().is_empty())
+    {
+        cmd.arg("--working-directory").arg(parent);
     }
     cmd.args(["--dump", "--dump-format", "json"]);
 
-    if let Ok(output) = cmd.output() {
-        if output.status.success() {
-            if let Ok(raw) = String::from_utf8(output.stdout) {
-                if let Ok(mut parsed) = serde_json::from_str::<JustDump>(&raw) {
-                    if parsed.source.is_empty()
-                        && let Some(p) = justfile_path
-                    {
-                        parsed.source = p.to_string();
+    let error = match cmd.output() {
+        Ok(output) if output.status.success() => {
+            match serde_json::from_slice::<JustDump>(&output.stdout) {
+                Ok(mut parsed) => {
+                    if parsed.source.is_empty() {
+                        parsed.source = justfile_path.to_string();
                     }
                     let src = parsed.source.clone();
                     return (parsed, format!("[cmd] Loaded live dump from `{src}`"));
                 }
+                Err(err) => err.to_string(),
             }
         }
-    }
+        Ok(output) => String::from_utf8_lossy(&output.stderr).trim().to_string(),
+        Err(err) => err.to_string(),
+    };
 
-    let parsed =
-        serde_json::from_str::<JustDump>(fallback_json).expect("valid fallback just dump JSON");
-    let src = parsed.source.clone();
+    // Empty dump keeps the path so the entry can be reloaded once the justfile is fixed.
+    let dump = JustDump {
+        source: justfile_path.to_string(),
+        ..Default::default()
+    };
     (
-        parsed,
-        format!("[snapshot] Loaded dump snapshot for `{src}`"),
+        dump,
+        format!("[error] Could not load `{justfile_path}`: {error}"),
     )
 }
 
@@ -526,9 +505,9 @@ fn percent_decode(input: &str) -> String {
     String::from_utf8_lossy(&out).into_owned()
 }
 
-fn resolve_cli_justfile_paths() -> Vec<String> {
+fn resolve_justfile_paths(raw_args: impl IntoIterator<Item = String>) -> Vec<String> {
     let mut paths = Vec::new();
-    for raw_arg in std::env::args().skip(1) {
+    for raw_arg in raw_args {
         let trimmed = raw_arg.trim();
         if trimmed.is_empty() || trimmed.starts_with('-') {
             continue;
@@ -571,24 +550,24 @@ fn resolve_cli_justfile_paths() -> Vec<String> {
 }
 
 pub fn load_initial_justfiles() -> (Vec<JustfileProfile>, String) {
-    let cli_paths = resolve_cli_justfile_paths();
-    if !cli_paths.is_empty() {
-        let mut profiles = Vec::new();
-        let mut first_msg = String::new();
-        for (idx, path) in cli_paths.iter().enumerate() {
-            let (profile, msg) = load_custom_justfile(path);
-            if idx == 0 {
-                first_msg = msg;
-            }
-            profiles.push(profile);
-        }
-        return (profiles, first_msg);
+    let paths = resolve_justfile_paths(std::env::args().skip(1));
+    if paths.is_empty() {
+        return (
+            Vec::new(),
+            "[ready] No justfiles loaded. Add a justfile to get started.".to_string(),
+        );
     }
 
-    (
-        Vec::new(),
-        "[ready] No justfiles loaded. Add a justfile to get started.".to_string(),
-    )
+    let mut profiles = Vec::new();
+    let mut first_msg = String::new();
+    for (idx, path) in paths.iter().enumerate() {
+        let (profile, msg) = load_custom_justfile(path);
+        if idx == 0 {
+            first_msg = msg;
+        }
+        profiles.push(profile);
+    }
+    (profiles, first_msg)
 }
 
 pub fn load_custom_justfile(justfile_path: &str) -> (JustfileProfile, String) {
@@ -605,10 +584,7 @@ pub fn load_custom_justfile(justfile_path: &str) -> (JustfileProfile, String) {
         .unwrap_or("workspace");
     let label = format!("{parent_name} / {file_name}");
 
-    let (mut dump, msg) = load_just_dump_for_path(Some(trimmed), FALLBACK_JUST_DUMP_JSON);
-    if dump.source.is_empty() || dump.source == "/var/home/zink/projects/cuvk/justfile" {
-        dump.source = trimmed.to_string();
-    }
+    let (dump, msg) = load_just_dump_for_path(trimmed);
 
     (
         JustfileProfile {
@@ -626,4 +602,44 @@ pub fn pick_and_load_justfile() -> Option<(JustfileProfile, String)> {
         .pick_file()?;
     let path_str = selected.to_string_lossy().to_string();
     Some(load_custom_justfile(&path_str))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn resolve_args_keeps_positions_and_splits_variadic() {
+        let param = |name: &str, default: &str, kind: &str| JustParameter {
+            name: name.to_string(),
+            default: Value::String(default.to_string()),
+            kind: kind.to_string(),
+            export: false,
+        };
+        let recipe = JustRecipe {
+            name: "deploy".to_string(),
+            namepath: "deploy".to_string(),
+            doc: None,
+            body: Vec::new(),
+            dependencies: Vec::new(),
+            parameters: vec![
+                param("env", "dev", "singular"),
+                param("region", "eu", "singular"),
+                param("flags", "", "star"),
+            ],
+            priors: 0,
+            private: false,
+            quiet: false,
+            shebang: false,
+        };
+        let key = |p: &str| ("jf".to_string(), "deploy".to_string(), p.to_string());
+        let overrides = BTreeMap::from([
+            (key("env"), String::new()),
+            (key("flags"), "-a  -b".to_string()),
+        ]);
+        assert_eq!(
+            recipe.resolve_args("jf", &overrides),
+            ["dev", "eu", "-a", "-b"]
+        );
+    }
 }

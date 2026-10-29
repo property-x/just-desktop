@@ -1,6 +1,6 @@
 fn main() {
     #[cfg(target_os = "linux")]
-    linux();
+    flatpak_patch();
 }
 
 // this is just here so we can build and run from within vscode as a flatpak
